@@ -101,7 +101,6 @@ class Game:
         self.score = 0
         self.game_over = False
         self.last_platform_y = 100
-        self.last_jump_time = time.time()
         
     def update(self):
         if not self.game_over:
@@ -156,14 +155,14 @@ def draw_game(game):
 def main():
     st.set_page_config(page_title="Cat Platform Game")
     
+    # Inizializzazione del gioco nella session_state
     if 'game' not in st.session_state:
         st.session_state.game = Game()
-        st.session_state.last_update = time.time()
     
     st.title("🐱 Cat Platform Game")
     st.markdown("""
     ### Controlli:
-    - Premi il pulsante **Salta** o la barra spaziatrice per saltare
+    - Premi il pulsante **Salta** per far saltare il gatto
     - Raggiungi le piattaforme per ottenere punti
     - Non cadere!
     """)
@@ -175,31 +174,29 @@ def main():
     with col2:
         st.write(f"Lives: {st.session_state.game.cat.lives}")
     with col3:
-        if st.button("Salta", key="jump"):
+        # Pulsante di salto con chiave univoca
+        jump_button = st.button("Salta!", key="jump_button")
+        if jump_button:
             st.session_state.game.cat.jump()
     
-    # Area di gioco
-    game_placeholder = st.empty()
+    # Container per l'area di gioco
+    game_container = st.empty()
     
-    # Game over
+    # Game over check
     if st.session_state.game.game_over:
         st.error("Game Over!")
-        if st.button("Ricomincia"):
+        if st.button("Ricomincia", key="restart_button"):
             st.session_state.game = Game()
     else:
-        # Aggiorna il gioco
-        current_time = time.time()
-        if current_time - st.session_state.last_update > 0.1:  # Limita l'aggiornamento a 10 FPS
-            st.session_state.game.update()
-            st.session_state.last_update = current_time
+        # Aggiorna stato del gioco
+        st.session_state.game.update()
     
     # Aggiorna il display
     game_image = draw_game(st.session_state.game)
-    game_placeholder.image(game_image)
-    
-    # Aggiorna la pagina
-    time.sleep(0.1)  # Piccola pausa per non sovraccaricare il browser
-    st.experimental_rerun()
+    game_container.image(game_image)
+
+    # Aggiungi un pulsante per aggiornare manualmente
+    st.button("Aggiorna Frame", key="update_frame")
 
 if __name__ == "__main__":
     main()
