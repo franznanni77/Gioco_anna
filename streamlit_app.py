@@ -1,11 +1,17 @@
 import streamlit as st
+import pygame
 import numpy as np
-import sounddevice as sd
+import time
+from pygame import mixer
 
 class PianoSynthesizer:
     def __init__(self):
-        self.sample_rate = 44100
-        self.base_frequencies = {
+        # Inizializza pygame e il mixer
+        pygame.init()
+        pygame.mixer.init()
+        
+        # Frequenze delle note
+        self.frequencies = {
             'C': 261.63,  # Do
             'D': 293.66,  # Re
             'E': 329.63,  # Mi
@@ -14,44 +20,38 @@ class PianoSynthesizer:
             'A': 440.00,  # La
             'B': 493.88   # Si
         }
-
-    def generate_note(self, frequency, duration=0.3, amplitude=0.3):
-        """Genera una nota utilizzando una forma d'onda sinusoidale con envelope ADSR"""
-        samples = int(self.sample_rate * duration)
-        t = np.linspace(0, duration, samples, False)
         
-        # Crea l'envelope ADSR
-        attack = int(0.05 * samples)
-        decay = int(0.1 * samples)
-        sustain_level = 0.7
-        release = int(0.2 * samples)
+        # Genera e memorizza i suoni
+        self.sounds = {}
+        self.generate_sounds()
         
-        envelope = np.ones(samples)
-        # Attack
-        envelope[:attack] = np.linspace(0, 1, attack)
-        # Decay
-        envelope[attack:attack+decay] = np.linspace(1, sustain_level, decay)
-        # Sustain è già impostato a sustain_level
-        # Release
-        envelope[-release:] = np.linspace(sustain_level, 0, release)
+    def generate_sine_wave(self, frequency, duration=0.3, sample_rate=44100):
+        """Genera una forma d'onda sinusoidale per una data frequenza"""
+        t = np.linspace(0, duration, int(sample_rate * duration), False)
         
         # Genera la nota base
-        note = amplitude * np.sin(2 * np.pi * frequency * t)
-        # Aggiungi alcune armoniche per un suono più ricco
-        note += 0.5 * amplitude * np.sin(4 * np.pi * frequency * t)  # Prima armonica
-        note += 0.25 * amplitude * np.sin(6 * np.pi * frequency * t)  # Seconda armonica
+        tone = np.sin(2 * np.pi * frequency * t)
         
-        # Applica l'envelope
-        note = note * envelope
+        # Aggiungi armoniche per un suono più ricco
+        tone += 0.5 * np.sin(4 * np.pi * frequency * t)
+        tone += 0.25 * np.sin(6 * np.pi * frequency * t)
         
-        return note.astype(np.float32)
-
-    def play_note(self, note_name):
-        """Riproduce una nota dato il suo nome"""
-        if note_name in self.base_frequencies:
-            frequency = self.base_frequencies[note_name]
-            note_data = self.generate_note(frequency)
-            sd.play(note_data, self.sample_rate)
+        # Normalizza
+        tone = np.int16(tone * 32767)
+        return tone
+        
+    def generate_sounds(self):
+        """Genera i suoni per tutte le note"""
+        for note, freq in self.frequencies.items():
+            sound_array = self.generate_sine_wave(freq)
+            sound = pygame.sndarray.make_sound(sound_array)
+            self.sounds[note] = sound
+            
+    def play_note(self, note):
+        """Riproduce una nota"""
+        if note in self.sounds:
+            self.sounds[note].play()
+            time.sleep(0.1)  # Piccolo delay per evitare sovrapposizioni
 
 def main():
     st.set_page_config(page_title="Piano Virtuale", page_icon="🎹")
@@ -79,9 +79,6 @@ def main():
     - Oppure usa i tasti della tastiera: A S D F G H J
     """)
     
-    # Crea i tasti del piano con un layout migliorato
-    cols = st.columns(7)
-    
     # Stile CSS per i tasti del piano
     st.markdown("""
     <style>
@@ -101,6 +98,9 @@ def main():
     }
     </style>
     """, unsafe_allow_html=True)
+    
+    # Crea i tasti del piano
+    cols = st.columns(7)
     
     # Crea i tasti
     for i, (col, (key, note)) in enumerate(zip(cols, key_bindings.items())):
