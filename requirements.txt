@@ -1,3 +1,4 @@
 streamlit
 pygame
 mingus==0.6.1
+fluidsynth
