@@ -1,65 +1,36 @@
 import streamlit as st
-import pygame
-import numpy as np
-import time
-from pygame import mixer
+from playsound import playsound
+import os
 
-class PianoSynthesizer:
+class Piano:
     def __init__(self):
-        # Inizializza pygame e il mixer
-        pygame.init()
-        pygame.mixer.init()
-        
-        # Frequenze delle note
-        self.frequencies = {
-            'C': 261.63,  # Do
-            'D': 293.66,  # Re
-            'E': 329.63,  # Mi
-            'F': 349.23,  # Fa
-            'G': 392.00,  # Sol
-            'A': 440.00,  # La
-            'B': 493.88   # Si
-        }
-        
-        # Genera e memorizza i suoni
-        self.sounds = {}
-        self.generate_sounds()
-        
-    def generate_sine_wave(self, frequency, duration=0.3, sample_rate=44100):
-        """Genera una forma d'onda sinusoidale per una data frequenza"""
-        t = np.linspace(0, duration, int(sample_rate * duration), False)
-        
-        # Genera la nota base
-        tone = np.sin(2 * np.pi * frequency * t)
-        
-        # Aggiungi armoniche per un suono più ricco
-        tone += 0.5 * np.sin(4 * np.pi * frequency * t)
-        tone += 0.25 * np.sin(6 * np.pi * frequency * t)
-        
-        # Normalizza
-        tone = np.int16(tone * 32767)
-        return tone
-        
-    def generate_sounds(self):
-        """Genera i suoni per tutte le note"""
-        for note, freq in self.frequencies.items():
-            sound_array = self.generate_sine_wave(freq)
-            sound = pygame.sndarray.make_sound(sound_array)
-            self.sounds[note] = sound
+        # Crea una cartella per i suoni se non esiste
+        if not os.path.exists('sounds'):
+            os.makedirs('sounds')
             
+        # Dizionario che mappa le note ai file audio
+        self.notes = {
+            'C': 'sounds/C.mp3',
+            'D': 'sounds/D.mp3',
+            'E': 'sounds/E.mp3',
+            'F': 'sounds/F.mp3',
+            'G': 'sounds/G.mp3',
+            'A': 'sounds/A.mp3',
+            'B': 'sounds/B.mp3'
+        }
+    
     def play_note(self, note):
-        """Riproduce una nota"""
-        if note in self.sounds:
-            self.sounds[note].play()
-            time.sleep(0.1)  # Piccolo delay per evitare sovrapposizioni
+        """Riproduce il suono della nota"""
+        if note in self.notes and os.path.exists(self.notes[note]):
+            playsound(self.notes[note], False)  # False per riproduzione asincrona
 
 def main():
     st.set_page_config(page_title="Piano Virtuale", page_icon="🎹")
     st.title("🎹 Piano Virtuale")
     
-    # Inizializza il sintetizzatore
-    if 'synth' not in st.session_state:
-        st.session_state.synth = PianoSynthesizer()
+    # Inizializza il piano
+    if 'piano' not in st.session_state:
+        st.session_state.piano = Piano()
     
     # Mappatura tasti-note
     key_bindings = {
@@ -71,6 +42,17 @@ def main():
         'H': 'A',
         'J': 'B'
     }
+    
+    # Controlla se i file audio esistono
+    missing_files = [note for note, file in st.session_state.piano.notes.items() 
+                    if not os.path.exists(file)]
+    
+    if missing_files:
+        st.warning(f"""
+        ⚠️ File audio mancanti per le note: {', '.join(missing_files)}
+        Per favore, scarica i file audio MP3 per ogni nota e inseriscili nella cartella 'sounds'.
+        I file devono essere nominati: C.mp3, D.mp3, E.mp3, F.mp3, G.mp3, A.mp3, B.mp3
+        """)
     
     # Interfaccia utente
     st.markdown("""
@@ -106,7 +88,7 @@ def main():
     for i, (col, (key, note)) in enumerate(zip(cols, key_bindings.items())):
         with col:
             if st.button(f"{note}\n({key})", key=note):
-                st.session_state.synth.play_note(note)
+                st.session_state.piano.play_note(note)
     
     # JavaScript per catturare gli eventi della tastiera
     st.markdown("""
