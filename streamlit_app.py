@@ -2,8 +2,7 @@ import streamlit as st
 import pygame
 import numpy as np
 from PIL import Image
-import io
-import keyboard
+import time
 
 class Cat:
     def __init__(self):
@@ -14,7 +13,7 @@ class Cat:
         self.lives = 3
         self.width = 40
         self.height = 40
-        self.direction = 1  # 1 per destra, -1 per sinistra
+        self.direction = 1
         
     def draw(self, surface):
         # Corpo principale (ovale)
@@ -81,7 +80,7 @@ class Platform:
     def draw(self, surface):
         pygame.draw.rect(surface, self.color,
                         (self.x, self.y, self.width, self.height))
-        # Aggiunge un effetto 3D
+        # Effetto 3D
         pygame.draw.rect(surface, (50, 50, 50),
                         (self.x, self.y + self.height - 5, self.width, 5))
     
@@ -102,6 +101,7 @@ class Game:
         self.score = 0
         self.game_over = False
         self.last_platform_y = 100
+        self.last_jump_time = time.time()
         
     def update(self):
         if not self.game_over:
@@ -158,28 +158,28 @@ def main():
     
     if 'game' not in st.session_state:
         st.session_state.game = Game()
+        st.session_state.last_update = time.time()
     
     st.title("🐱 Cat Platform Game")
     st.markdown("""
     ### Controlli:
-    - Premi **Spazio** per saltare
+    - Premi il pulsante **Salta** o la barra spaziatrice per saltare
     - Raggiungi le piattaforme per ottenere punti
     - Non cadere!
     """)
     
-    # Display score e vite
-    col1, col2 = st.columns(2)
+    # Display score e vite in colonne
+    col1, col2, col3 = st.columns(3)
     with col1:
         st.write(f"Score: {st.session_state.game.score}")
     with col2:
         st.write(f"Lives: {st.session_state.game.cat.lives}")
+    with col3:
+        if st.button("Salta", key="jump"):
+            st.session_state.game.cat.jump()
     
     # Area di gioco
     game_placeholder = st.empty()
-    
-    # Gestione input
-    if keyboard.is_pressed('space'):  # Controlla la barra spaziatrice
-        st.session_state.game.cat.jump()
     
     # Game over
     if st.session_state.game.game_over:
@@ -187,13 +187,18 @@ def main():
         if st.button("Ricomincia"):
             st.session_state.game = Game()
     else:
-        st.session_state.game.update()
+        # Aggiorna il gioco
+        current_time = time.time()
+        if current_time - st.session_state.last_update > 0.1:  # Limita l'aggiornamento a 10 FPS
+            st.session_state.game.update()
+            st.session_state.last_update = current_time
     
     # Aggiorna il display
     game_image = draw_game(st.session_state.game)
     game_placeholder.image(game_image)
     
-    # Aggiorna continuamente
+    # Aggiorna la pagina
+    time.sleep(0.1)  # Piccola pausa per non sovraccaricare il browser
     st.experimental_rerun()
 
 if __name__ == "__main__":
