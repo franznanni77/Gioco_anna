@@ -2,7 +2,6 @@ import streamlit as st
 import pygame
 import numpy as np
 from PIL import Image
-import time
 
 class Cat:
     def __init__(self):
@@ -14,6 +13,8 @@ class Cat:
         self.width = 40
         self.height = 40
         self.direction = 1
+        self.gravity = 0.5  # Ridotta la gravità
+        self.jump_power = -12  # Aumentata la potenza del salto
         
     def draw(self, surface):
         # Corpo principale (ovale)
@@ -53,19 +54,24 @@ class Cat:
     
     def jump(self):
         if not self.is_jumping:
-            self.velocity_y = -15
+            self.velocity_y = self.jump_power  # Usa jump_power per il salto
             self.is_jumping = True
     
     def update(self):
-        # Gravità
-        self.velocity_y += 0.8
+        # Applica la gravità
+        self.velocity_y += self.gravity
+        
+        # Aggiorna la posizione
         self.y += self.velocity_y
         
-        # Limite inferiore
-        if self.y > 500:
+        # Controlla i limiti dello schermo
+        if self.y > 500:  # Pavimento
             self.y = 500
             self.velocity_y = 0
             self.is_jumping = False
+        elif self.y < 0:  # Soffitto
+            self.y = 0
+            self.velocity_y = 0
 
 class Platform:
     def __init__(self, x, y):
@@ -73,14 +79,13 @@ class Platform:
         self.y = y
         self.width = 100
         self.height = 20
-        self.speed = 2
+        self.speed = 1  # Ridotta la velocità delle piattaforme
         self.points = 10
         self.color = (100, 100, 100)
     
     def draw(self, surface):
         pygame.draw.rect(surface, self.color,
                         (self.x, self.y, self.width, self.height))
-        # Effetto 3D
         pygame.draw.rect(surface, (50, 50, 50),
                         (self.x, self.y + self.height - 5, self.width, 5))
     
@@ -140,7 +145,7 @@ class Game:
 
 def draw_game(game):
     surface = pygame.Surface((600, 600))
-    surface.fill((30, 30, 50))  # Sfondo più scuro
+    surface.fill((30, 30, 50))
     
     # Disegna le piattaforme
     for platform in game.platforms:
@@ -155,7 +160,6 @@ def draw_game(game):
 def main():
     st.set_page_config(page_title="Cat Platform Game")
     
-    # Inizializzazione del gioco nella session_state
     if 'game' not in st.session_state:
         st.session_state.game = Game()
     
@@ -174,7 +178,6 @@ def main():
     with col2:
         st.write(f"Lives: {st.session_state.game.cat.lives}")
     with col3:
-        # Pulsante di salto con chiave univoca
         jump_button = st.button("Salta!", key="jump_button")
         if jump_button:
             st.session_state.game.cat.jump()
@@ -196,7 +199,8 @@ def main():
     game_container.image(game_image)
 
     # Aggiungi un pulsante per aggiornare manualmente
-    st.button("Aggiorna Frame", key="update_frame")
+    if st.button("Aggiorna Frame", key="update_frame"):
+        st.session_state.game.update()
 
 if __name__ == "__main__":
     main()
